@@ -237,7 +237,7 @@ Errno CCoreProtocol::ValidateTransaction(const CTransaction& tx, int nHeight)
             }
         }
     }
-    if (tx.nType == CTransaction::TX_DEFI_REWARD && (tx.vchData.size() != 40))
+    if (tx.nType == CTransaction::TX_DEFI_REWARD && (tx.vchData.size() > 40))
     {
         return DEBUG(ERR_TRANSACTION_INVALID, "DeFi reward tx data length is not 40\n");
     }
