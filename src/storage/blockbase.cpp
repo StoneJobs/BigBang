@@ -1978,6 +1978,7 @@ bool CBlockBase::AddDeFiRelation(const uint256& hashFork, CBlockView& view, boos
             // reconstruct memory
             StdError("CBlockBase", "AddDeFiRelation memory is not equal DB");
             InitDeFiRelation(spFork);
+            break;
         }
         StdDebug("CBlockBase", "Add relation in memory, key: %s", addr.first.GetPubKey().ToString().c_str());
     }
