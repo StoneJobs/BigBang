@@ -285,6 +285,12 @@ CRPCMod::CRPCMod()
         //
         ("gettxfee", &CRPCMod::RPCGetTxFee)
         //
+        ("makesha256", &CRPCMod::RPCMakeSha256)
+        //
+        ("aesencrypt", &CRPCMod::RPCAesEncrypt)
+        //
+        ("aesdecrypt", &CRPCMod::RPCAesDecrypt)
+        //
         ("listunspent", &CRPCMod::RPCListUnspent)
         //
         ("getdefirelation", &CRPCMod::RPCGetDeFiRelation)
@@ -1782,6 +1788,7 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
         throw CRPCException(RPC_WALLET_ERROR, std::string("Failed to create transaction: ") + *strErr + fmt.str());
     }
 
+    vector<uint8> vchSignExtraData;
     bool fCompleted = false;
     if (spParam->strSign_M.IsValid() && spParam->strSign_S.IsValid())
     {
@@ -1793,7 +1800,7 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
         {
             CTemplateId tid = from.GetTemplateId();
             uint16 nType = tid.GetType();
-            if (nType != TEMPLATE_EXCHANGE)
+            if (nType != TEMPLATE_EXCHANGE && nType != TEMPLATE_DEXMATCH)
             {
                 throw CRPCException(RPC_INVALID_PARAMETER, "Invalid from address,must be a template address");
             }
@@ -1803,9 +1810,17 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
             }
             vector<unsigned char> vsm = ParseHexString(spParam->strSign_M);
             vector<unsigned char> vss = ParseHexString(spParam->strSign_S);
-            txNew.vchSig.clear();
-            CODataStream ds(txNew.vchSig);
-            ds << vsm << vss << hashFork << pService->GetForkHeight(hashFork);
+            if (nType == TEMPLATE_EXCHANGE)
+            {
+                txNew.vchSig.clear();
+                CODataStream ds(txNew.vchSig);
+                ds << vsm << vss << hashFork << pService->GetForkHeight(hashFork);
+            }
+            else
+            {
+                CODataStream ds(vchSignExtraData);
+                ds << vsm << vss;
+            }
         }
         else
         {
@@ -1826,7 +1841,7 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
         vchSendToData = ParseHexString(spParam->strSendtodata);
     }
 
-    if (!pService->SignTransaction(txNew, vchSendToData, fCompleted))
+    if (!pService->SignTransaction(txNew, vchSendToData, vchSignExtraData, fCompleted))
     {
         throw CRPCException(RPC_WALLET_ERROR, "Failed to sign transaction");
     }
@@ -1965,7 +1980,7 @@ CRPCResultPtr CRPCMod::RPCSignTransaction(CRPCParamPtr param)
     }
 
     bool fCompleted = false;
-    if (!pService->SignTransaction(rawTx, vchSendToData, fCompleted))
+    if (!pService->SignTransaction(rawTx, vchSendToData, vector<uint8>(), fCompleted))
     {
         throw CRPCException(RPC_WALLET_ERROR, "Failed to sign transaction");
     }
@@ -2808,6 +2823,107 @@ CRPCResultPtr CRPCMod::RPCGetTxFee(rpc::CRPCParamPtr param)
     int64 nTxFee = CalcMinTxFee(ParseHexString(spParam->strHexdata).size(), NEW_MIN_TX_FEE);
     auto spResult = MakeCGetTransactionFeeResultPtr();
     spResult->dTxfee = ValueFromAmount(nTxFee);
+    return spResult;
+}
+
+CRPCResultPtr CRPCMod::RPCMakeSha256(rpc::CRPCParamPtr param)
+{
+    auto spParam = CastParamPtr<CMakeSha256Param>(param);
+    vector<unsigned char> vData;
+    if (spParam->strHexdata.IsValid())
+    {
+        vData = ParseHexString(spParam->strHexdata);
+    }
+    else
+    {
+        uint256 u;
+        crypto::CryptoGetRand256(u);
+        vData.assign(u.begin(), u.end());
+    }
+
+    uint256 hash = crypto::CryptoSHA256(&(vData[0]), vData.size());
+
+    auto spResult = MakeCMakeSha256ResultPtr();
+    spResult->strHexdata = ToHexString(vData);
+    spResult->strSha256 = hash.GetHex();
+    return spResult;
+}
+
+CRPCResultPtr CRPCMod::RPCAesEncrypt(rpc::CRPCParamPtr param)
+{
+    auto spParam = CastParamPtr<CAesEncryptParam>(param);
+
+    CAddress addressLocal(spParam->strLocaladdress);
+    if (addressLocal.IsNull() || !addressLocal.IsPubKey())
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid local address");
+    }
+
+    CAddress addressRemote(spParam->strRemoteaddress);
+    if (addressRemote.IsNull() || !addressRemote.IsPubKey())
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid remote address");
+    }
+
+    crypto::CPubKey pubkeyLocal;
+    addressLocal.GetPubKey(pubkeyLocal);
+
+    crypto::CPubKey pubkeyRemote;
+    addressRemote.GetPubKey(pubkeyRemote);
+
+    vector<uint8> vMessage = ParseHexString(spParam->strMessage);
+    if (vMessage.empty())
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid message");
+    }
+
+    vector<uint8> vCiphertext;
+    if (!pService->AesEncrypt(pubkeyLocal, pubkeyRemote, vMessage, vCiphertext))
+    {
+        throw CRPCException(RPC_WALLET_ERROR, "Encrypt fail");
+    }
+
+    auto spResult = MakeCAesEncryptResultPtr();
+    spResult->strResult = ToHexString(vCiphertext);
+    return spResult;
+}
+
+CRPCResultPtr CRPCMod::RPCAesDecrypt(rpc::CRPCParamPtr param)
+{
+    auto spParam = CastParamPtr<CAesDecryptParam>(param);
+
+    CAddress addressLocal(spParam->strLocaladdress);
+    if (addressLocal.IsNull() || !addressLocal.IsPubKey())
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid local address");
+    }
+
+    CAddress addressRemote(spParam->strRemoteaddress);
+    if (addressRemote.IsNull() || !addressRemote.IsPubKey())
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid remote address");
+    }
+
+    crypto::CPubKey pubkeyLocal;
+    addressLocal.GetPubKey(pubkeyLocal);
+
+    crypto::CPubKey pubkeyRemote;
+    addressRemote.GetPubKey(pubkeyRemote);
+
+    vector<uint8> vCiphertext = ParseHexString(spParam->strCiphertext);
+    if (vCiphertext.empty())
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid ciphertext");
+    }
+
+    vector<uint8> vMessage;
+    if (!pService->AesDecrypt(pubkeyLocal, pubkeyRemote, vCiphertext, vMessage))
+    {
+        throw CRPCException(RPC_WALLET_ERROR, "Decrypt fail");
+    }
+
+    auto spResult = MakeCAesDecryptResultPtr();
+    spResult->strResult = ToHexString(vMessage);
     return spResult;
 }
 
