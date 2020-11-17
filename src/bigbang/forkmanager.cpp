@@ -164,7 +164,7 @@ bool CForkManager::VerifyFork(const uint256& hashPrevBlock, const uint256& hashF
     return true;
 }
 
-bool CForkManager::AddValidForkContext(const uint256& hashPrevBlock, const uint256& hashNewBlock, const vector<CForkContext>& vForkCtxt,
+bool CForkManager::AddValidForkContext(const uint256& hashPrevBlock, const uint256& hashNewBlock, const vector<pair<CDestination, CForkContext>>& vForkCtxt,
                                        bool fCheckPointBlock, uint256& hashRefFdBlock, map<uint256, int>& mapValidFork)
 {
     CValidForkId& fd = mapBlockValidFork[hashNewBlock];
@@ -204,8 +204,9 @@ bool CForkManager::AddValidForkContext(const uint256& hashPrevBlock, const uint2
         }
     }
 
-    for (const CForkContext& ctxt : vForkCtxt)
+    for (const auto& vd : vForkCtxt)
     {
+        const CForkContext& ctxt = vd.second;
         CForkSchedule& sched = mapForkSched[ctxt.hashFork];
 
         sched.ctxtFork = ctxt;
@@ -402,10 +403,10 @@ int CForkManager::GetValidForkCreatedHeight(const uint256& hashBlock, const uint
     const auto it = mapBlockValidFork.find(hashBlock);
     if (it != mapBlockValidFork.end())
     {
-        int nCreaatedHeight = it->second.GetCreatedHeight(hashFork);
-        if (nCreaatedHeight >= 0)
+        int nCreatedHeight = it->second.GetCreatedHeight(hashFork);
+        if (nCreatedHeight >= 0)
         {
-            return nCreaatedHeight;
+            return nCreatedHeight;
         }
         if (it->second.hashRefFdBlock != 0)
         {
