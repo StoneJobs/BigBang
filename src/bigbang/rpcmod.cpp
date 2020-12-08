@@ -229,6 +229,8 @@ CRPCMod::CRPCMod()
         //
         ("unlockkey", &CRPCMod::RPCUnlockKey)
         //
+        ("removekey", &CRPCMod::RPCRemoveKey)
+        //
         ("importprivkey", &CRPCMod::RPCImportPrivKey)
         //
         ("importpubkey", &CRPCMod::RPCImportPubKey)
@@ -242,6 +244,8 @@ CRPCMod::CRPCMod()
         ("importtemplate", &CRPCMod::RPCImportTemplate)
         //
         ("exporttemplate", &CRPCMod::RPCExportTemplate)
+        //
+        ("removetemplate", &CRPCMod::RPCRemoveTemplate)
         //
         ("validateaddress", &CRPCMod::RPCValidateAddress)
         //
@@ -1282,6 +1286,48 @@ CRPCResultPtr CRPCMod::RPCUnlockKey(CRPCParamPtr param)
     return MakeCUnlockKeyResultPtr(string("Unlock key successfully: ") + spParam->strPubkey);
 }
 
+CRPCResultPtr CRPCMod::RPCRemoveKey(rpc::CRPCParamPtr param)
+{
+    auto spParam = CastParamPtr<CRemoveKeyParam>(param);
+    CAddress address(spParam->strPubkey);
+    if (address.IsTemplate())
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "This method only accepts pubkey or pubkey address as parameter rather than template address you supplied.");
+    }
+
+    crypto::CPubKey pubkey;
+    if (address.IsPubKey())
+    {
+        address.GetPubKey(pubkey);
+    }
+    else
+    {
+        pubkey.SetHex(spParam->strPubkey);
+    }
+
+    int nVersion;
+    bool fLocked, fPublic;
+    int64 nAutoLockTime;
+    if (!pService->GetKeyStatus(pubkey, nVersion, fLocked, nAutoLockTime, fPublic))
+    {
+        throw CRPCException(RPC_INVALID_ADDRESS_OR_KEY, "Unknown key");
+    }
+
+    crypto::CCryptoString strPassphrase = spParam->strPassphrase.c_str();
+    if (!fPublic && !pService->Unlock(pubkey, strPassphrase, UNLOCKKEY_RELEASE_DEFAULT_TIME))
+    {
+        throw CRPCException(RPC_WALLET_PASSPHRASE_INCORRECT, "Can't remove key with incorrect passphrase");
+    }
+
+    auto strErr = pService->RemoveKey(pubkey);
+    if (strErr)
+    {
+        throw CRPCException(RPC_WALLET_REMOVE_KEY_ERROR, *strErr);
+    }
+
+    return MakeCRemoveKeyResultPtr(string("Remove key successfully: ") + spParam->strPubkey);
+}
+
 CRPCResultPtr CRPCMod::RPCImportPrivKey(CRPCParamPtr param)
 {
     auto spParam = CastParamPtr<CImportPrivKeyParam>(param);
@@ -1486,6 +1532,23 @@ CRPCResultPtr CRPCMod::RPCExportTemplate(CRPCParamPtr param)
 
     vector<unsigned char> vchTemplate = ptr->Export();
     return MakeCExportTemplateResultPtr(ToHexString(vchTemplate));
+}
+
+CRPCResultPtr CRPCMod::RPCRemoveTemplate(rpc::CRPCParamPtr param)
+{
+    auto spParam = CastParamPtr<CRemoveTemplateParam>(param);
+    CAddress address(spParam->strAddress);
+    if (address.IsNull() || !address.IsTemplate())
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid template address");
+    }
+
+    if (!pService->RemoveTemplate(address.GetTemplateId()))
+    {
+        throw CRPCException(RPC_WALLET_ERROR, "Rempve template address fail");
+    }
+
+    return MakeCRemoveTemplateResultPtr("Success");
 }
 
 CRPCResultPtr CRPCMod::RPCValidateAddress(CRPCParamPtr param)

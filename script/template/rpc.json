@@ -1951,6 +1951,51 @@
             "{\"code\":-401,\"message\":\"Failed add new key.\"}"
         ]
     },
+    "removekey": {
+        "type": "command",
+        "name": "RemoveKey",
+        "desc": "Remove Key in Wallet.",
+        "request": {
+            "type": "object",
+            "content": {
+                "pubkey": {
+                    "type": "string",
+                    "desc": "public key or pubkey address"
+                },
+                "passphrase": {
+                    "type": "string",
+                    "desc": "passphrase",
+                    "required": false
+                },
+                "synctx": {
+                    "type": "bool",
+                    "desc": "sync tx or not",
+                    "default": true,
+                    "required": false,
+                    "opt": "s"
+                }
+            }
+        },
+        "response": {
+            "type": "string",
+            "name": "pubkey",
+            "desc": "public key"
+        },
+        "example": [
+            {
+                "request": "bigbang-cli removekey f4124c636d37b1308ba95c14b2487134030d5817f7fa93f11bcbc616aab7c3b9 123",
+                "response": "f4124c636d37b1308ba95c14b2487134030d5817f7fa93f11bcbc616aab7c3b9"
+            },
+            {
+                "request": "curl -d '{\"id\":7,\"method\":\"removekey\",\"jsonrpc\":\"2.0\",\"params\":{\"pubkey\":\"f4124c636d37b1308ba95c14b2487134030d5817f7fa93f11bcbc616aab7c3b9\",\"passphrase\":\"123\"}}' http://127.0.0.1:9902",
+                "response": "{\"id\":7,\"jsonrpc\":\"2.0\",\"result\":\"f4124c636d37b1308ba95c14b2487134030d5817f7fa93f11bcbc616aab7c3b9\"}"
+            }
+        ],
+        "error": [
+            "{\"code\":-6,\"message\":\"Passphrase must be nonempty\"}",
+            "{\"code\":-401,\"message\":\"Failed remove key.\"}"
+        ]
+    },
     "encryptkey": {
         "type": "command",
         "name": "EncryptKey",
@@ -2364,6 +2409,38 @@
         "error": [
             "{\"code\":-6,\"message\":\"Invalid address\"}",
             "{\"code\":-401,\"message\":\"Unkown template\"}"
+        ]
+    },
+    "removetemplate": {
+        "type": "command",
+        "name": "RemoveTemplate",
+        "desc": "Remove template in Wallet.",
+        "request": {
+            "type": "object",
+            "content": {
+                "address": {
+                    "type": "string",
+                    "desc": "template address"
+                }
+            }
+        },
+        "response": {
+            "type": "string",
+            "name": "result",
+            "desc": "remove result"
+        },
+        "example": [
+            {
+                "request": "bigbang-cli removetemplate 20m01gbqzmw3nvndx684nsxp1z3tcy4rg0715tgc9sraxd7m56ydttama",
+                "response": "Success"
+            },
+            {
+                "request": "curl -d '{\"id\":7,\"method\":\"removetemplate\",\"jsonrpc\":\"2.0\",\"params\":{\"address\":\"20m01gbqzmw3nvndx684nsxp1z3tcy4rg0715tgc9sraxd7m56ydttama\"}}' http://127.0.0.1:9902",
+                "response": "{\"id\":7,\"jsonrpc\":\"2.0\",\"result\":\"Success\"}"
+            }
+        ],
+        "error": [
+            "{\"code\":-401,\"message\":\"Failed remove template.\"}"
         ]
     },
     "validateaddress": {

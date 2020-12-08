@@ -284,6 +284,7 @@ public:
       : IBase("wallet") {}
     /* Key store */
     virtual boost::optional<std::string> AddKey(const crypto::CKey& key) = 0;
+    virtual boost::optional<std::string> RemoveKey(const crypto::CPubKey& pubkey) = 0;
     virtual void GetPubKeys(std::set<crypto::CPubKey>& setPubKey) const = 0;
     virtual bool Have(const crypto::CPubKey& pubkey, const int32 nVersion = -1) const = 0;
     virtual bool Export(const crypto::CPubKey& pubkey, std::vector<unsigned char>& vchKey) const = 0;
@@ -303,6 +304,7 @@ public:
     virtual bool Have(const CTemplateId& tid) const = 0;
     virtual bool AddTemplate(CTemplatePtr& ptr) = 0;
     virtual CTemplatePtr GetTemplate(const CTemplateId& tid) const = 0;
+    virtual bool RemoveTemplate(const CTemplateId& tid) = 0;
     /* Wallet Tx */
     virtual std::size_t GetTxCount() = 0;
     virtual bool ListTx(const uint256& hashFork, const CDestination& dest, int nOffset, int nCount, std::vector<CWalletTx>& vWalletTx) = 0;
@@ -393,6 +395,7 @@ public:
     virtual bool GetKeyStatus(const crypto::CPubKey& pubkey, int& nVersion, bool& fLocked, int64& nAutoLockTime, bool& fPublic) = 0;
     virtual boost::optional<std::string> MakeNewKey(const crypto::CCryptoString& strPassphrase, crypto::CPubKey& pubkey) = 0;
     virtual boost::optional<std::string> AddKey(const crypto::CKey& key) = 0;
+    virtual boost::optional<std::string> RemoveKey(const crypto::CPubKey& pubkey) = 0;
     virtual bool ImportKey(const std::vector<unsigned char>& vchKey, crypto::CPubKey& pubkey) = 0;
     virtual bool ExportKey(const crypto::CPubKey& pubkey, std::vector<unsigned char>& vchKey) = 0;
     virtual bool EncryptKey(const crypto::CPubKey& pubkey, const crypto::CCryptoString& strPassphrase,
@@ -406,6 +409,7 @@ public:
     virtual void GetTemplateIds(std::set<CTemplateId>& setTid) = 0;
     virtual bool AddTemplate(CTemplatePtr& ptr) = 0;
     virtual CTemplatePtr GetTemplate(const CTemplateId& tid) = 0;
+    virtual bool RemoveTemplate(const CTemplateId& tid) = 0;
     virtual bool GetDeFiRelation(const uint256& hashFork, const CDestination& destIn, CDestination& parent) = 0;
     virtual bool GetBalance(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance) = 0;
     virtual bool ListWalletTx(const uint256& hashFork, const CDestination& dest, int nOffset, int nCount, std::vector<CWalletTx>& vWalletTx) = 0;
