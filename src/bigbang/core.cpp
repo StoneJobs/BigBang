@@ -169,6 +169,13 @@ static const int32 CHANGE_MINT_RATE_HEIGHT = 0;
 static const int32 CHANGE_MINT_RATE_HEIGHT = 580000;
 #endif
 
+// Change DPoS chain trust
+#ifdef BIGBANG_TESTNET
+static const int32 CHANGE_DPOS_CHAIN_TRUST_HEIGHT = 0;
+#else
+static const int32 CHANGE_DPOS_CHAIN_TRUST_HEIGHT = 580000;
+#endif
+
 namespace bigbang
 {
 ///////////////////////////////
@@ -1279,6 +1286,7 @@ Errno CCoreProtocol::VerifyMintHeightTx(const CTransaction& tx, const CDestinati
 
 bool CCoreProtocol::GetBlockTrust(const CBlock& block, uint256& nChainTrust, const CBlockIndex* pIndexPrev, const CDelegateAgreement& agreement, const CBlockIndex* pIndexRef, size_t nEnrollTrust)
 {
+    int32 nHeight = block.GetBlockHeight();
     if (block.IsGenesis())
     {
         nChainTrust = uint64(0);
@@ -1299,9 +1307,9 @@ bool CCoreProtocol::GetBlockTrust(const CBlock& block, uint256& nChainTrust, con
         }
         else if (pIndexPrev != nullptr)
         {
-            if (!IsDposHeight(block.GetBlockHeight()))
+            if (!IsDposHeight(nHeight))
             {
-                StdError("CCoreProtocol", "GetBlockTrust: not dpos height, height: %d", block.GetBlockHeight());
+                StdError("CCoreProtocol", "GetBlockTrust: not dpos height, height: %d", nHeight);
                 return false;
             }
 
@@ -1321,7 +1329,6 @@ bool CCoreProtocol::GetBlockTrust(const CBlock& block, uint256& nChainTrust, con
                 nAlgo = pIndex->nProofAlgo;
             }
 
-            // DPoS difficulty = weight * (2 ^ nBits)
             int nBits;
             int64 nReward;
             if (GetProofOfWorkTarget(pIndexPrev, nAlgo, nBits, nReward))
@@ -1336,7 +1343,17 @@ bool CCoreProtocol::GetBlockTrust(const CBlock& block, uint256& nChainTrust, con
                     StdError("CCoreProtocol", "GetBlockTrust: nEnrollTrust error, nEnrollTrust: %lu", nEnrollTrust);
                     return false;
                 }
-                nChainTrust = uint256(uint64(nEnrollTrust)) << nBits;
+
+                if (!IsDPoSNewTrustHeight(nHeight))
+                {
+                    // DPoS difficulty = weight * (2 ^ nBits)
+                    nChainTrust = uint256(uint64(nEnrollTrust)) << nBits;
+                }
+                else
+                {
+                    // DPoS difficulty = 2 ^ (nBits + weight)
+                    nChainTrust = uint256(1) << (int(nEnrollTrust) + nBits);
+                }
             }
             else
             {
@@ -1453,6 +1470,15 @@ bool CCoreProtocol::GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int nAlg
 bool CCoreProtocol::IsDposHeight(int height)
 {
     if (height < DELEGATE_PROOF_OF_STAKE_HEIGHT)
+    {
+        return false;
+    }
+    return true;
+}
+
+bool CCoreProtocol::IsDPoSNewTrustHeight(int height)
+{
+    if (height < CHANGE_DPOS_CHAIN_TRUST_HEIGHT)
     {
         return false;
     }
@@ -1993,6 +2019,15 @@ CProofOfWorkParam::~CProofOfWorkParam()
 bool CProofOfWorkParam::IsDposHeight(int height)
 {
     if (height < nDelegateProofOfStakeHeight)
+    {
+        return false;
+    }
+    return true;
+}
+
+bool CProofOfWorkParam::IsDPoSNewTrustHeight(int height)
+{
+    if (height < CHANGE_DPOS_CHAIN_TRUST_HEIGHT)
     {
         return false;
     }
