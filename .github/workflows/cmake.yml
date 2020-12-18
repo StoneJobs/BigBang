@@ -118,7 +118,8 @@ jobs:
         run: |
           mkdir bigbang-mac
           cp build/src/bigbang/bigbang* bigbang-mac/
-          hdiutil create bigbang-mac.dmg -ov -srcfolder "bigbang-mac"
+          hdiutil create bigbang-mac-uncompressed.dmg -ov -srcfolder "bigbang-mac"
+          hdiutil convert bigbang-mac-uncompressed.dmg -format UDZO -o bigbang-mac.dmg
 
       # release
       - name: Release
