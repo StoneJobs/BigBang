@@ -112,7 +112,7 @@ jobs:
 
       # package
       - name: Package
-        if: github.event_name == 'release'
+        if: github.event_name == 'push'
         working-directory: ${{ github.workspace }}
         shell: bash
         run: |
@@ -121,9 +121,9 @@ jobs:
           hdiutil create bigbang-mac-uncompressed.dmg -ov -srcfolder "bigbang-mac"
           hdiutil convert bigbang-mac-uncompressed.dmg -format UDZO -o bigbang-mac.dmg
 
-      # release
-      - name: Release
-        if: github.event_name == 'release'
+      # upload
+      - name: Upload
+        if: github.event_name == 'push'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
