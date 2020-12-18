@@ -5,7 +5,7 @@ on:
     branches:    
       - master
   release:
-    types: [created, published, released]
+    types: [created, published, unpublished, edited, deleted, prereleased, released]
 
 env:
   BUILD_TYPE: release
