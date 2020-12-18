@@ -1,4 +1,4 @@
-name: BigBangCore
+name: BigBangCore-Workflow
 
 on:
   pull_request:
